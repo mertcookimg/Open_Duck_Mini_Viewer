@@ -396,10 +396,7 @@ export function DuckViewer({
       const rect = renderer.domElement.getBoundingClientRect();
       const meshes = meshInfosRef.current.map((i) => i.mesh);
       const intersectAt = (px: number, py: number) => {
-        ndc.set(
-          ((px - rect.left) / rect.width) * 2 - 1,
-          -((py - rect.top) / rect.height) * 2 + 1,
-        );
+        ndc.set(((px - rect.left) / rect.width) * 2 - 1, -((py - rect.top) / rect.height) * 2 + 1);
         raycaster.setFromCamera(ndc, camera);
         return raycaster.intersectObjects(meshes, false);
       };

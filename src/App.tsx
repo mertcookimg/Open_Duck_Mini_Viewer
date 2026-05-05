@@ -102,8 +102,7 @@ export default function App() {
     [setColorOverrides],
   );
   const handleSetAllColor = useCallback(
-    (hex: string) =>
-      setColorOverrides(() => Object.fromEntries(linkNames.map((n) => [n, hex]))),
+    (hex: string) => setColorOverrides(() => Object.fromEntries(linkNames.map((n) => [n, hex]))),
     [linkNames, setColorOverrides],
   );
   const handleRandomizeAll = useCallback(() => {
@@ -129,10 +128,7 @@ export default function App() {
       return next;
     });
   }, [selectedLink, setColorOverrides]);
-  const handleResetAll = useCallback(
-    () => setColorOverrides({}),
-    [setColorOverrides],
-  );
+  const handleResetAll = useCallback(() => setColorOverrides({}), [setColorOverrides]);
   const exitPaint = useCallback(() => {
     setPaintMode(false);
     setSelectedLink(null);
