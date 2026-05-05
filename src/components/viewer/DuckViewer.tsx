@@ -21,6 +21,9 @@ interface Props {
   colorOverrides?: Record<string, string>;
   onLinkNames?: (names: string[]) => void;
   onLinkDefaults?: (defaults: Record<string, string>) => void;
+  paintMode?: boolean;
+  selectedLink?: string | null;
+  onSelectLink?: (name: string | null) => void;
 }
 
 interface ViewApi {
@@ -35,7 +38,16 @@ interface HeadRig {
   restQuat: THREE.Quaternion;
 }
 
-export function DuckViewer({ joints, imu, colorOverrides, onLinkNames, onLinkDefaults }: Props) {
+export function DuckViewer({
+  joints,
+  imu,
+  colorOverrides,
+  onLinkNames,
+  onLinkDefaults,
+  paintMode = false,
+  selectedLink = null,
+  onSelectLink,
+}: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const robotRef = useRef<URDFRobot | null>(null);
   const headRigRef = useRef<HeadRig | null>(null);
@@ -62,12 +74,22 @@ export function DuckViewer({ joints, imu, colorOverrides, onLinkNames, onLinkDef
   const knownLinkNamesRef = useRef<string[]>([]);
   const onLinkNamesRef = useRef(onLinkNames);
   const onLinkDefaultsRef = useRef(onLinkDefaults);
+  const paintModeRef = useRef(paintMode);
+  const selectedLinkRef = useRef<string | null>(selectedLink);
+  const hoverLinkRef = useRef<string | null>(null);
+  const onSelectLinkRef = useRef(onSelectLink);
+  const outlinesByLinkRef = useRef<Map<string, THREE.LineSegments[]>>(new Map());
+  const refreshOutlinesRef = useRef<() => void>(() => {});
+  const rendererDomRef = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     onLinkNamesRef.current = onLinkNames;
   }, [onLinkNames]);
   useEffect(() => {
     onLinkDefaultsRef.current = onLinkDefaults;
   }, [onLinkDefaults]);
+  useEffect(() => {
+    onSelectLinkRef.current = onSelectLink;
+  }, [onSelectLink]);
 
   useEffect(() => {
     latestRef.current = { joints, imu };
@@ -88,6 +110,7 @@ export function DuckViewer({ joints, imu, colorOverrides, onLinkNames, onLinkDef
     renderer.setPixelRatio(window.devicePixelRatio);
     mount.appendChild(renderer.domElement);
     renderer.domElement.style.outline = "none";
+    rendererDomRef.current = renderer.domElement;
 
     // Damping OFF: programmatic camera moves apply instantly without
     // OrbitControls smoothing the change away.
@@ -325,6 +348,129 @@ export function DuckViewer({ joints, imu, colorOverrides, onLinkNames, onLinkDef
     };
     window.addEventListener("keydown", onKey);
 
+    // ---- paint mode: edge-outline highlight + click-to-pick + hover preview ----
+    // Outlines render on top (depthTest=false) so they stay visible even
+    // through occluding geometry. Each outline gets its own material clone
+    // so we can drive selected vs hover with independent colour/opacity.
+    // Both states use white at different opacities — a chromatic outline
+    // would clash with whatever paint colour the user is editing.
+    const SELECTED_OPACITY = 0.35;
+    const HOVER_OPACITY = 0.15;
+
+    const refreshOutlineVisibility = () => {
+      const sel = paintModeRef.current ? selectedLinkRef.current : null;
+      const hov = paintModeRef.current ? hoverLinkRef.current : null;
+      for (const [link, lines] of outlinesByLinkRef.current.entries()) {
+        const isSel = link === sel;
+        const isHov = !isSel && link === hov;
+        const visible = isSel || isHov;
+        for (const l of lines) {
+          l.visible = visible;
+          if (visible) {
+            const mat = l.material as THREE.LineBasicMaterial;
+            mat.opacity = isSel ? SELECTED_OPACITY : HOVER_OPACITY;
+            mat.needsUpdate = true;
+          }
+        }
+      }
+    };
+    refreshOutlinesRef.current = refreshOutlineVisibility;
+
+    const ndc = new THREE.Vector2();
+    const raycaster = new THREE.Raycaster();
+    // Fat-ray picking. Thin geometry (the legs especially) is hard to hit
+    // dead-centre; if the centre ray misses we sample a small ring of
+    // neighbour offsets and take the closest hit. The centre-first
+    // fast-path means common clicks pay no extra cost.
+    const NEIGHBOR_OFFSETS_PX: ReadonlyArray<readonly [number, number]> = [
+      [-4, 0],
+      [4, 0],
+      [0, -4],
+      [0, 4],
+      [-4, -4],
+      [4, -4],
+      [-4, 4],
+      [4, 4],
+    ];
+    const pickLinkAt = (clientX: number, clientY: number): string | null => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const meshes = meshInfosRef.current.map((i) => i.mesh);
+      const intersectAt = (px: number, py: number) => {
+        ndc.set(
+          ((px - rect.left) / rect.width) * 2 - 1,
+          -((py - rect.top) / rect.height) * 2 + 1,
+        );
+        raycaster.setFromCamera(ndc, camera);
+        return raycaster.intersectObjects(meshes, false);
+      };
+      const linkOfMesh = (mesh: THREE.Object3D) =>
+        meshInfosRef.current.find((i) => i.mesh === mesh)?.linkName ?? null;
+
+      const centre = intersectAt(clientX, clientY);
+      if (centre.length > 0) return linkOfMesh(centre[0].object);
+
+      let best: { dist: number; mesh: THREE.Object3D } | null = null;
+      for (const [dx, dy] of NEIGHBOR_OFFSETS_PX) {
+        const hits = intersectAt(clientX + dx, clientY + dy);
+        if (hits.length === 0) continue;
+        if (!best || hits[0].distance < best.dist) {
+          best = { dist: hits[0].distance, mesh: hits[0].object };
+        }
+      }
+      return best ? linkOfMesh(best.mesh) : null;
+    };
+
+    const downPos = { x: 0, y: 0, t: 0, valid: false };
+    const onPointerDown = (e: PointerEvent) => {
+      if (!paintModeRef.current) return;
+      downPos.x = e.clientX;
+      downPos.y = e.clientY;
+      downPos.t = performance.now();
+      downPos.valid = true;
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      if (!paintModeRef.current || !downPos.valid) return;
+      downPos.valid = false;
+      // Movement / time budget for "this was a click, not a camera-orbit
+      // drag." 8px lets a normal mouse hand tremor or a touchpad tap pass;
+      // 600ms covers a slow click + the OS click-delay on touch devices.
+      if (Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y) > 8) return;
+      if (performance.now() - downPos.t > 600) return;
+      onSelectLinkRef.current?.(pickLinkAt(e.clientX, e.clientY));
+    };
+
+    // Hover preview: re-pick on every pointermove (rAF-throttled) so the
+    // user can see exactly which part will be picked before committing.
+    let pendingMove: { x: number; y: number } | null = null;
+    let moveRaf = 0;
+    const flushHover = () => {
+      moveRaf = 0;
+      if (!pendingMove) return;
+      const { x, y } = pendingMove;
+      pendingMove = null;
+      if (!paintModeRef.current) return;
+      const link = pickLinkAt(x, y);
+      if (hoverLinkRef.current !== link) {
+        hoverLinkRef.current = link;
+        refreshOutlineVisibility();
+      }
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!paintModeRef.current) return;
+      pendingMove = { x: e.clientX, y: e.clientY };
+      if (!moveRaf) moveRaf = requestAnimationFrame(flushHover);
+    };
+    const onPointerLeave = () => {
+      if (hoverLinkRef.current !== null) {
+        hoverLinkRef.current = null;
+        refreshOutlineVisibility();
+      }
+    };
+    renderer.domElement.addEventListener("pointerdown", onPointerDown);
+    renderer.domElement.addEventListener("pointerup", onPointerUp);
+    renderer.domElement.addEventListener("pointermove", onPointerMove);
+    renderer.domElement.addEventListener("pointerleave", onPointerLeave);
+
     // ---- resize ----
     const resize = () => {
       const w = mount.clientWidth;
@@ -367,6 +513,31 @@ export function DuckViewer({ joints, imu, colorOverrides, onLinkNames, onLinkDef
           meshInfosRef.current = [...meshInfosRef.current, ...fresh];
           applyMaterialMode(meshInfosRef.current, viewModeRef.current);
           applyColorOverrides(meshInfosRef.current, colorOverridesRef.current);
+          // Build edge outlines for newly streamed meshes. They live as
+          // children of the mesh so they ride along with joint motion and
+          // explode offsets for free. Material is cloned per outline so
+          // each one's opacity can be tweened independently between the
+          // selected and hover states.
+          for (const info of fresh) {
+            if (!info.linkName) continue;
+            const geom = info.mesh.geometry as THREE.BufferGeometry | undefined;
+            if (!geom) continue;
+            const edges = new THREE.EdgesGeometry(geom, 30);
+            const mat = new THREE.LineBasicMaterial({
+              color: 0xffffff,
+              depthTest: false,
+              transparent: true,
+              opacity: HOVER_OPACITY,
+            });
+            const line = new THREE.LineSegments(edges, mat);
+            line.renderOrder = RENDER_ORDER_HELPER + 1;
+            line.visible = false;
+            info.mesh.add(line);
+            const arr = outlinesByLinkRef.current.get(info.linkName) ?? [];
+            arr.push(line);
+            outlinesByLinkRef.current.set(info.linkName, arr);
+          }
+          refreshOutlineVisibility();
           const names = Array.from(
             new Set(meshInfosRef.current.map((i) => i.linkName).filter((n): n is string => !!n)),
           ).sort();
@@ -471,7 +642,12 @@ export function DuckViewer({ joints, imu, colorOverrides, onLinkNames, onLinkDef
 
     return () => {
       cancelAnimationFrame(raf);
+      if (moveRaf) cancelAnimationFrame(moveRaf);
       window.removeEventListener("keydown", onKey);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      renderer.domElement.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointermove", onPointerMove);
+      renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
       ro.disconnect();
       controls.dispose();
       renderer.dispose();
@@ -484,6 +660,8 @@ export function DuckViewer({ joints, imu, colorOverrides, onLinkNames, onLinkDef
       bodyAxesRef.current = null;
       jointAxisArrowsRef.current = [];
       meshInfosRef.current = [];
+      outlinesByLinkRef.current.clear();
+      rendererDomRef.current = null;
     };
   }, []);
 
@@ -516,6 +694,15 @@ export function DuckViewer({ joints, imu, colorOverrides, onLinkNames, onLinkDef
     colorOverridesRef.current = next;
     applyColorOverrides(meshInfosRef.current, next);
   }, [colorOverrides]);
+
+  useEffect(() => {
+    paintModeRef.current = paintMode;
+    selectedLinkRef.current = selectedLink;
+    if (!paintMode) hoverLinkRef.current = null;
+    refreshOutlinesRef.current();
+    const dom = rendererDomRef.current;
+    if (dom) dom.style.cursor = paintMode ? "crosshair" : "";
+  }, [paintMode, selectedLink]);
 
   // ---- on-screen camera buttons ----
   const call = useCallback(
