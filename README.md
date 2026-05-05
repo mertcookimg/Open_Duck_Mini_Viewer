@@ -8,6 +8,8 @@ A **browser-only** GUI for the [Open Duck Mini V2](https://github.com/apirrone/O
 bipedal duck robot. Walk, pose, and inspect the duck in 3D — all in the
 browser, no Python, no hardware required.
 
+https://github.com/user-attachments/assets/1ceee8f6-930f-4648-9927-6d90fd00f1fb
+
 > 🌐 **Live demo:** https://mertcookimg.github.io/Open_Duck_Mini_Viewer/
 > _(after you push; auto-deployed by GitHub Actions on every push to `main`)_
 
