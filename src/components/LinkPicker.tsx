@@ -47,9 +47,7 @@ export function LinkPicker({
     };
   }, [open]);
 
-  const selectedColor = selected
-    ? (overrides[selected] ?? defaults[selected])
-    : undefined;
+  const selectedColor = selected ? (overrides[selected] ?? defaults[selected]) : undefined;
   const groups = groupLinks(links);
 
   return (
@@ -68,7 +66,9 @@ export function LinkPicker({
             <Swatch color={selectedColor} />
             <span className="truncate flex-1 text-slate-200">{selected}</span>
             {selected in overrides && (
-              <span className="text-amber-400 text-[10px]" title="overridden">●</span>
+              <span className="text-amber-400 text-[10px]" title="overridden">
+                ●
+              </span>
             )}
           </>
         ) : (
@@ -120,7 +120,9 @@ export function LinkPicker({
                     <Swatch color={color} />
                     <span className="truncate flex-1">{name}</span>
                     {isOverridden && (
-                      <span className="text-amber-400 text-[10px]" title="overridden">●</span>
+                      <span className="text-amber-400 text-[10px]" title="overridden">
+                        ●
+                      </span>
                     )}
                   </button>
                 );
@@ -158,9 +160,7 @@ function groupLinks(names: string[]): Array<{ group: string; items: string[] }> 
     const idx = n.indexOf("_");
     const prefix = idx > 0 ? n.slice(0, idx) : "";
     const useGroup = !!prefix && (prefixCount.get(prefix) ?? 0) >= 2;
-    const label = useGroup
-      ? prefix.charAt(0).toUpperCase() + prefix.slice(1)
-      : "Other";
+    const label = useGroup ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : "Other";
     const arr = groups.get(label);
     if (arr) arr.push(n);
     else groups.set(label, [n]);

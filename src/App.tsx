@@ -51,8 +51,7 @@ export default function App() {
     [],
   );
   const handleSetColor = useCallback(
-    (link: string, hex: string) =>
-      setColorOverrides((prev) => ({ ...prev, [link]: hex })),
+    (link: string, hex: string) => setColorOverrides((prev) => ({ ...prev, [link]: hex })),
     [],
   );
   const handleResetLink = useCallback(
@@ -67,10 +66,7 @@ export default function App() {
   );
   const handleResetAll = useCallback(() => setColorOverrides({}), []);
   const handleSetAllColor = useCallback(
-    (hex: string) =>
-      setColorOverrides(() =>
-        Object.fromEntries(linkNames.map((n) => [n, hex])),
-      ),
+    (hex: string) => setColorOverrides(() => Object.fromEntries(linkNames.map((n) => [n, hex]))),
     [linkNames],
   );
 

@@ -35,13 +35,7 @@ interface HeadRig {
   restQuat: THREE.Quaternion;
 }
 
-export function DuckViewer({
-  joints,
-  imu,
-  colorOverrides,
-  onLinkNames,
-  onLinkDefaults,
-}: Props) {
+export function DuckViewer({ joints, imu, colorOverrides, onLinkNames, onLinkDefaults }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const robotRef = useRef<URDFRobot | null>(null);
   const headRigRef = useRef<HeadRig | null>(null);
@@ -374,11 +368,7 @@ export function DuckViewer({
           applyMaterialMode(meshInfosRef.current, viewModeRef.current);
           applyColorOverrides(meshInfosRef.current, colorOverridesRef.current);
           const names = Array.from(
-            new Set(
-              meshInfosRef.current
-                .map((i) => i.linkName)
-                .filter((n): n is string => !!n),
-            ),
+            new Set(meshInfosRef.current.map((i) => i.linkName).filter((n): n is string => !!n)),
           ).sort();
           const prev = knownLinkNamesRef.current;
           if (prev.length !== names.length || !prev.every((n, i) => n === names[i])) {

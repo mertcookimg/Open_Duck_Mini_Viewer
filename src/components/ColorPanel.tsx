@@ -112,8 +112,7 @@ export function ColorPanel({
         />
         <span
           className={
-            "text-[11px] font-mono " +
-            (overriddenColor ? "text-slate-200" : "text-slate-500")
+            "text-[11px] font-mono " + (overriddenColor ? "text-slate-200" : "text-slate-500")
           }
           title={overriddenColor ? "overridden" : "original"}
         >

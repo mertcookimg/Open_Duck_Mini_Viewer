@@ -8,10 +8,7 @@ const HEX_RE = /^#[0-9a-f]{6}$/i;
 
 type Overrides = Record<string, string>;
 
-export function useColorOverrides(): [
-  Overrides,
-  React.Dispatch<React.SetStateAction<Overrides>>,
-] {
+export function useColorOverrides(): [Overrides, React.Dispatch<React.SetStateAction<Overrides>>] {
   const [overrides, setOverrides] = useState<Overrides>({});
 
   useEffect(() => {
