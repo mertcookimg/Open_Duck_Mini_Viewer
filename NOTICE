@@ -1,0 +1,16 @@
+Open_Duck_Mini_Viewer
+Copyright 2026 Masato Kobayashi (mertcookimg)
+
+This product is licensed under the Apache License, Version 2.0
+(see LICENSE).
+
+This product bundles 3D CAD assets (URDF + STL meshes) under
+public/assets/open_duck_mini_v2/, distributed under the Apache
+License, Version 2.0, from:
+
+  Open_Duck_Mini
+  Copyright (c) Antoine Pirrone
+  https://github.com/apirrone/Open_Duck_Mini
+
+See public/assets/open_duck_mini_v2/LICENSE and
+public/assets/open_duck_mini_v2/NOTICE for the upstream notices.

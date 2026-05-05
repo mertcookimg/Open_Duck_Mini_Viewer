@@ -1,0 +1,103 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly in the browser GUI.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please fill in as much
+        of the information below as you can — it makes the problem much
+        faster to reproduce and fix.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A short description of the problem.
+      placeholder: e.g. "Joystick stops responding after triggering the bow motion"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps so anyone can reproduce locally.
+      placeholder: |
+        1. Open the live demo / run `npm run dev`
+        2. Click the "bow" motion button
+        3. Try to drive with the joystick
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: e.g. "Joystick should drive the duck after the motion finishes."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: e.g. "Joystick input is ignored; status bar still shows 'bowing'."
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & version
+      placeholder: e.g. Chrome 130, Firefox 132, Edge 130, Safari 17
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: e.g. Windows 11, macOS 14.5, Ubuntu 24.04
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: Where did you see it?
+      options:
+        - Live demo (GitHub Pages)
+        - Local dev server (npm run dev)
+        - Local production build (npm run build && npm run preview)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit / version (if local)
+      description: Output of `git rev-parse --short HEAD` or the package version.
+      placeholder: e.g. 3be4dc0
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Browser console output
+      description: Paste any errors or warnings from DevTools → Console.
+      render: shell
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots / screen recording
+      description: Drag and drop images or a short clip (optional, but very helpful for UI bugs).
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Other context, links, or hypotheses.

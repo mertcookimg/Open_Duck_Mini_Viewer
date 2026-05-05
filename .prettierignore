@@ -1,0 +1,19 @@
+# Build output
+dist/
+.vite/
+
+# Dependencies
+node_modules/
+
+# Lockfiles (managed by npm)
+package-lock.json
+
+# Bundled third-party assets (URDF / STL / upstream LICENSE & NOTICE)
+public/assets/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Logs / coverage
+coverage/
+*.log

@@ -1,2 +1,18 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Normalize text files to LF in the repo. Working copies on Windows can
+# still check out as CRLF if core.autocrlf=true, but the index stays LF
+# so Prettier / CI never sees mixed line endings.
+* text=auto eol=lf
+
+# Treat known binaries as binary so Git never tries to normalize them.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mp4 binary
+*.webm binary
+*.mov binary
+*.zip binary
+*.stl binary
+*.glb binary
+*.gltf binary

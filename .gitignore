@@ -1,0 +1,33 @@
+# Node
+node_modules/
+dist/
+.vite/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Editor
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.DS_Store
+
+# Local AI tooling state (Claude Code, etc.)
+.claude/
+CLAUDE.md
+
+# Local secrets / Vite local env
+.env
+.env.local
+.env.*.local
