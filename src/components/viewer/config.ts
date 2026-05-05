@@ -1,8 +1,11 @@
 // Copyright 2026 Masato Kobayashi
 // SPDX-License-Identifier: Apache-2.0
 
-export const URDF_URL = "/assets/open_duck_mini_v2/robot.urdf";
-export const PACKAGE_BASE = "/assets/open_duck_mini_v2";
+// Vite injects `import.meta.env.BASE_URL` from `vite.config.ts`'s `base`.
+// Locally it's `/`, on GitHub Pages project sites it's `./` (resolves under
+// `/<repo>/`). Always has a trailing slash, so concatenate without one.
+export const URDF_URL = `${import.meta.env.BASE_URL}assets/open_duck_mini_v2/robot.urdf`;
+export const PACKAGE_BASE = `${import.meta.env.BASE_URL}assets/open_duck_mini_v2`;
 
 export const D2R = Math.PI / 180;
 
