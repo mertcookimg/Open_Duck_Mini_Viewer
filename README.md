@@ -53,6 +53,25 @@ Both scripts install dependencies on first run and open
 http://localhost:5173 in your browser. Add `--no-browser` (`-NoBrowser` on
 PowerShell) to skip the auto-open.
 
+### Don't have Node.js?
+
+Grab the LTS from [nodejs.org](https://nodejs.org/), or use your package
+manager:
+
+```bash
+# Ubuntu / Debian / WSL
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -
+sudo apt-get install -y nodejs
+
+# macOS (Homebrew)
+brew install node
+
+# Windows (winget)
+winget install OpenJS.NodeJS.LTS
+```
+
+Then re-run the start script above. Verify with `node -v` and `npm -v`.
+
 ---
 
 ## Want to extend it?
