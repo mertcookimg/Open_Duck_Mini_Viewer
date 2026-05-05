@@ -103,7 +103,13 @@ export function PoseEditorPanel({
                     max={max}
                     step={0.5}
                     value={Math.max(min, Math.min(max, value))}
-                    onChange={(e) => onSetOverride(joint.name, Number(e.target.value))}
+                    onChange={(e) => {
+                      // Touching a slider implies "I want to edit", so flip
+                      // override mode on automatically. Avoids the
+                      // "I dragged but nothing happened" footgun.
+                      if (!enabled) onEnabledChange(true);
+                      onSetOverride(joint.name, Number(e.target.value));
+                    }}
                     className="w-full"
                   />
                 </div>
