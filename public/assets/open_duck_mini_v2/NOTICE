@@ -1,0 +1,10 @@
+Open_Duck_Mini — 3D CAD assets (URDF + STL meshes) for the Open Duck Mini V2.
+Copyright (c) Antoine Pirrone
+
+Source: https://github.com/apirrone/Open_Duck_Mini
+
+Licensed under the Apache License, Version 2.0 (see LICENSE in this directory).
+
+The files in this directory are redistributed unmodified as part of the
+Open_Duck_Mini_Viewer project. Any modifications, if introduced, are recorded in the
+project's git history.

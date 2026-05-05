@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest an enhancement or new capability for the viewer GUI.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! Filling in the sections below
+        helps clarify what to build and why.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What are you trying to do? What's missing or awkward today?
+      placeholder: e.g. "I want to record joint trajectories so I can replay them later."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Concrete description of the feature or change you'd like.
+      placeholder: e.g. "Add a Record/Stop button to the control panel that captures joint angles and downloads them as JSON."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about, and why they fall short.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area of the project (best guess)
+      options:
+        - 3D viewer / URDF / meshes
+        - Robot model (gait / motions / IMU / battery)
+        - Control panel / joystick / motions
+        - Pose editor
+        - Joint table / trends / IMU / battery panels
+        - Status bar / panel visibility
+        - Build / deploy / dev tooling
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Mockups, links, related issues, etc.
