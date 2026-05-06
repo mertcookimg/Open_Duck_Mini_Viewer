@@ -187,18 +187,37 @@ export function DuckViewer({
     apiRef.current = api;
 
     // ---- URDF loading ----
-    let didFit = false;
+    // Mobile browsers settle the layout (address bar collapse, safe-area
+    // insets, orientation flip) AFTER the URDF has loaded, so a one-shot
+    // fit on load can run against a stale canvas size and end up
+    // zoomed-in. Keep re-fitting on every layout change UNTIL the user
+    // grabs the camera; once they orbit / zoom, lock in their view.
+    let droppedToFloor = false;
+    let userHasInteracted = false;
+    controls.addEventListener("start", () => {
+      userHasInteracted = true;
+    });
+
     const fitToRobot = () => {
-      if (didFit) return;
       const robot = robotRef.current;
       if (!robot) return;
 
       const robotBox = new THREE.Box3().setFromObject(robot);
       if (!isFinite(robotBox.min.z) || robotBox.isEmpty()) return; // try again later
 
-      didFit = true;
-      // Drop the robot so feet sit on the grid.
-      robot.position.z -= robotBox.min.z;
+      // Wait for a non-zero canvas. On mobile the mount can briefly be
+      // 0×0 while React/Vite are settling layout — fitting against that
+      // produces NaN aspect / zero distance.
+      const cw = mount.clientWidth;
+      const ch = mount.clientHeight;
+      if (cw <= 0 || ch <= 0) return;
+
+      // One-shot floor drop — only the first successful fit moves the
+      // robot; subsequent re-fits just retarget the camera.
+      if (!droppedToFloor) {
+        robot.position.z -= robotBox.min.z;
+        droppedToFloor = true;
+      }
 
       const worldBox = new THREE.Box3().setFromObject(tiltGroup);
       const size = worldBox.getSize(new THREE.Vector3());
@@ -213,7 +232,7 @@ export function DuckViewer({
       const vFov = (camera.fov * Math.PI) / 180;
       const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
       const fitFov = Math.min(vFov, hFov);
-      const FRAMING = 1.4;
+      const FRAMING = 1.2;
       const distance = (radius / Math.sin(fitFov / 2)) * FRAMING;
 
       const dir = new THREE.Vector3(0.7, 0.4, 0.7).normalize();
@@ -223,9 +242,15 @@ export function DuckViewer({
       camera.far = distance * 200;
       camera.updateProjectionMatrix();
       controls.update();
-      controls.saveState(); // .reset() returns here
+      controls.saveState(); // .reset() returns to the most recent fit
 
-      setStatus("ready");
+      setStatus((prev) => (prev === "ready" ? prev : "ready"));
+    };
+
+    // Re-fit on layout changes until the user interacts. Used by the
+    // ResizeObserver below.
+    const refitIfStillAuto = () => {
+      if (!userHasInteracted) fitToRobot();
     };
 
     const manager = new THREE.LoadingManager();
@@ -479,9 +504,20 @@ export function DuckViewer({
     const resize = () => {
       const w = mount.clientWidth;
       const h = mount.clientHeight;
-      renderer.setSize(w, h, false);
+      if (w <= 0 || h <= 0) return;
+      // `true` (the default) lets three.js sync canvas.style.width/height
+      // to the CSS pixel size. Passing `false` here meant the canvas's
+      // CSS size kept growing to the drawing-buffer size — fine on
+      // pixelRatio=1 desktops, but on a pixelRatio=2/3 phone the canvas
+      // rendered at 2-3× the mount and only the top-left corner was
+      // visible (the robot looked stuck in the upper-left).
+      renderer.setSize(w, h, true);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
+      // Mobile layouts often settle after the initial render (URL bar
+      // collapse, orientation change, safe-area). Re-fit until the user
+      // grabs the camera.
+      refitIfStillAuto();
     };
     resize();
     const ro = new ResizeObserver(resize);
@@ -624,7 +660,7 @@ export function DuckViewer({
 
         // Skip floor snap while inspecting so the explosion stays centred on
         // the body rather than dragging the whole rig upward.
-        if (didFit && !inspecting) {
+        if (droppedToFloor && !inspecting) {
           floorBox.setFromObject(robot);
           if (isFinite(floorBox.min.y) && !floorBox.isEmpty()) {
             robot.position.z -= floorBox.min.y;
