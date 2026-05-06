@@ -10,7 +10,7 @@ browser, no Python, no hardware required.
 
 https://github.com/user-attachments/assets/1ceee8f6-930f-4648-9927-6d90fd00f1fb
 
-https://github.com/user-attachments/assets/8fe16ce6-7d57-42ec-8255-6f62c4f19b17
+https://github.com/user-attachments/assets/b1672739-f940-46d8-9979-466d273f56a1
 
 > 🌐 **Live demo:** https://mertcookimg.github.io/Open_Duck_Mini_Viewer/
 > _(after you push; auto-deployed by GitHub Actions on every push to `main`)_
