@@ -203,11 +203,18 @@ export function DuckViewer({
       const worldBox = new THREE.Box3().setFromObject(tiltGroup);
       const size = worldBox.getSize(new THREE.Vector3());
       const center = worldBox.getCenter(new THREE.Vector3());
-      // Framing factor — larger values pull the camera back so the robot has
-      // breathing room around it instead of filling the whole pane.
-      const radius = Math.max(size.x, size.y, size.z, 0.05) * 0.85;
-      const fov = (camera.fov * Math.PI) / 180;
-      const distance = radius / Math.sin(fov / 2);
+      // Fit the robot in BOTH axes by picking the smaller of the
+      // vertical / horizontal FOV. Using only the vertical FOV (the
+      // previous behaviour) makes the robot spill horizontally and
+      // appear "zoomed in" on narrow windows. Multiply by FRAMING so
+      // the robot has comfortable breathing room rather than filling
+      // edge-to-edge.
+      const radius = Math.max(size.x, size.y, size.z, 0.05);
+      const vFov = (camera.fov * Math.PI) / 180;
+      const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+      const fitFov = Math.min(vFov, hFov);
+      const FRAMING = 1.4;
+      const distance = (radius / Math.sin(fitFov / 2)) * FRAMING;
 
       const dir = new THREE.Vector3(0.7, 0.4, 0.7).normalize();
       controls.target.copy(center);
