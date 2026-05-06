@@ -15,3 +15,53 @@ body,
 body {
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
+
+* {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: transparent transparent;
+}
+*:hover,
+[data-scrolling] {
+  scrollbar-color: rgba(100, 116, 139, 0.4) transparent; /* slate-500 */
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*:hover::-webkit-scrollbar-thumb,
+[data-scrolling]::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.6); /* slate-400, brighter when grabbed */
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/*
+ * "More content below" fade. When a `.scroll-edges` container is
+ * overflowing AND not scrolled to the bottom, soften its bottom edge
+ * with a mask so the user sees there's more below. The mask is removed
+ * once they scroll to the bottom (no more content to hint at).
+ */
+.scroll-edges[data-overflow]:not([data-scroll-bottom]) {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0,
+    black calc(100% - 24px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(to bottom, black 0, black calc(100% - 24px), transparent 100%);
+}

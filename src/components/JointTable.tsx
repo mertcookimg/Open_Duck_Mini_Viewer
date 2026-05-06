@@ -25,8 +25,8 @@ function JointRow({ joint }: { joint: JointState }) {
   const clamped = Math.max(-90, Math.min(90, joint.angle_deg));
   const pct = (clamped + 90) / 180; // 0..1
   return (
-    <div className="grid grid-cols-[10rem_1fr_4rem] gap-2 items-center text-xs">
-      <span className="text-slate-300 truncate">{joint.name}</span>
+    <div className="grid grid-cols-[minmax(0,10rem)_minmax(3rem,1fr)_3.5rem] gap-2 items-center text-xs">
+      <span className="text-slate-300 truncate min-w-0">{joint.name}</span>
       <div className="relative h-2 bg-slate-800 rounded-full">
         <div className="absolute inset-y-0 left-1/2 w-px bg-slate-600" />
         <div

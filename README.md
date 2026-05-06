@@ -21,11 +21,17 @@ https://github.com/user-attachments/assets/8fe16ce6-7d57-42ec-8255-6f62c4f19b17
 
 - 🕹 **Drive it** with a virtual joystick or `WASD` / `QE`
 - 🎬 **Trigger motions** — `home`, `stand`, `bow`, `wave`, `headbang`
-- 🎚 **Pose-edit any joint** with sliders (live preview in 3D)
+- 🎚 **Pose-edit any joint** with sliders, grouped by body part — just
+  drag and the override mode flips on automatically
+- 🎨 **Paint any part** in 3D — click parts on the model to recolour
+  them, or hit `🎲 Random` for a colourful palette in one click
 - 🔍 **Inspect the CAD** — explode parts, wireframe, X-ray
 - 📈 **Watch live joint angles** as scrolling sparklines
 - 🚨 **E-stop** big red button
 - 🛞 **Toggle axes** (world / body / per-joint) for debugging
+- 🪟 **Resize the layout** by dragging the slim handles between columns —
+  on narrow viewports the columns stack as a top → 3D → bottom layout
+  with the same drag-to-resize handles between sections
 
 The Open Duck Mini's gait, IMU, and battery values are simulated by an in-browser
 `Robot` model so the GUI is fully self-contained — perfect for a static
@@ -82,13 +88,15 @@ Then re-run the start script above. Verify with `node -v` and `npm -v`.
 
 Common edits:
 
-| Goal                                  | Where to look                                                                                                                                                           |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Add a new motion                      | [`src/robot/motions.ts`](src/robot/motions.ts) — add a `Motion` to the `MOTIONS` map                                                                                    |
-| Tune joint limits or home pose        | [`src/robot/joints.ts`](src/robot/joints.ts)                                                                                                                            |
-| Tweak the simulated gait              | [`src/robot/Robot.ts`](src/robot/Robot.ts) (`gaitAngle`, `readTelemetry`)                                                                                               |
-| Add a new GUI panel                   | Create `src/components/MyPanel.tsx`, register the key in [`PanelVisibilityPicker.tsx`](src/components/PanelVisibilityPicker.tsx), render it in [`App.tsx`](src/App.tsx) |
-| Change camera presets / view controls | [`src/components/viewer/`](src/components/viewer/)                                                                                                                      |
+| Goal                                    | Where to look                                                                                                                                                                        |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Add a new motion                        | [`src/robot/motions.ts`](src/robot/motions.ts) — add a `Motion` to the `MOTIONS` map                                                                                                 |
+| Tune joint limits or home pose          | [`src/robot/joints.ts`](src/robot/joints.ts)                                                                                                                                         |
+| Tweak the simulated gait                | [`src/robot/Robot.ts`](src/robot/Robot.ts) (`gaitAngle`, `readTelemetry`)                                                                                                            |
+| Add a new GUI panel                     | Create `src/components/MyPanel.tsx`, register the key in [`PanelVisibilityPicker.tsx`](src/components/PanelVisibilityPicker.tsx), render it in [`App.tsx`](src/App.tsx)              |
+| Change paint presets / random palette   | [`src/components/PaintToolbar.tsx`](src/components/PaintToolbar.tsx) (`PRESETS`) · [`src/App.tsx`](src/App.tsx) (`randomVibrantHex`)                                                 |
+| Tune layout min/max sizes or breakpoint | [`src/hooks/useColumnWidths.ts`](src/hooks/useColumnWidths.ts) · [`src/hooks/useRowHeights.ts`](src/hooks/useRowHeights.ts) · `NARROW_BREAKPOINT_PX` in [`src/App.tsx`](src/App.tsx) |
+| Change camera presets / view controls   | [`src/components/viewer/`](src/components/viewer/)                                                                                                                                   |
 
 ## Tech stack
 
@@ -111,12 +119,15 @@ src/
 │   ├── motions.ts                keyframe motion library
 │   └── api.ts · index.ts         public surface
 ├── hooks/                        useTelemetry / usePoseOverrides / usePanelVisibility
+│                                 useColorOverrides / useColumnWidths
+│                                 useRowHeights / useScrollEdges
 └── components/
-    ├── viewer/                   three.js + URDF subsystem
+    ├── viewer/                   three.js + URDF subsystem (raycaster pick + outline overlays)
     ├── ControlPanel · Joystick · PoseEditorPanel
     ├── JointTable · JointTrendPanel · ImuPanel · BatteryGauge
-    ├── StatusBar · PanelVisibilityPicker
-    └── Help · Loading · PanelHiddenHint
+    ├── PaintToolbar · ColorPanel · LinkPicker
+    ├── StatusBar · PanelVisibilityPicker · Resizer
+    └── Help · Loading
 scripts/                          setup / start-all / start-frontend (PS + Bash)
 .github/workflows/deploy.yml      GitHub Pages auto-deploy
 ```
@@ -160,13 +171,15 @@ http://localhost:5173 with hot reload.
 ### 4. Verify before pushing
 
 ```bash
-npm run typecheck     # TypeScript must pass
-npm run build         # production build must succeed
+npm run typecheck      # TypeScript must pass
+npm run format:check   # Prettier formatting must be clean
+                       #   (run `npm run format` to auto-fix)
+npm run build          # production build must succeed
 ```
 
 If your change is visual or interactive, exercise it in the browser
-(joystick, motions, pose editor, viewer modes) and verify nothing else
-regressed.
+(joystick, motions, pose editor, paint mode, viewer modes) and verify
+nothing else regressed.
 
 ### 5. Open a Pull Request
 

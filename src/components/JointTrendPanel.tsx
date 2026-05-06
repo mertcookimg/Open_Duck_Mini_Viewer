@@ -196,8 +196,8 @@ function JointSparkline({
   const path = buildPath(points, width, height, rangeDeg);
 
   return (
-    <div className="grid grid-cols-[9rem_1fr_4rem] gap-2 items-center text-xs">
-      <span className="text-slate-300 truncate">{name}</span>
+    <div className="grid grid-cols-[minmax(0,9rem)_minmax(3rem,1fr)_3.5rem] gap-2 items-center text-xs">
+      <span className="text-slate-300 truncate min-w-0">{name}</span>
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="w-full h-8 rounded bg-slate-800"
