@@ -29,10 +29,10 @@ export const PANEL_LABELS: Record<PanelKey, string> = {
 };
 
 export const DEFAULT_PANELS: PanelVisibility = {
-  battery: true,
-  imu: true,
-  jointTrends: true,
-  jointTable: true,
+  battery: false,
+  imu: false,
+  jointTrends: false,
+  jointTable: false,
   poseEditor: true,
   viewer: true,
   operator: true,
