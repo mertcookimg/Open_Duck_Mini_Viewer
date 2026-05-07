@@ -285,6 +285,11 @@ export default function App() {
 
   // 3D viewer + paint controls. Shared between desktop and narrow stack
   // layouts so the same DuckViewer instance hosts paint mode either way.
+  // Always-visible "reset pose" affordance on the viewer so users can
+  // drop back to live telemetry without locating the Pose Editor panel.
+  // Disabled (rather than hidden) when there's nothing to reset, so the
+  // button location is consistent and discoverable.
+  const hasPoseChanges = pose.enabled || Object.keys(pose.overrides).length > 0;
   const viewerInner = (
     <>
       <DuckViewer
@@ -297,6 +302,19 @@ export default function App() {
         selectedLink={selectedLink}
         onSelectLink={paintMode ? handlePickPart : setSelectedLink}
       />
+      <button
+        type="button"
+        onClick={pose.clear}
+        disabled={!hasPoseChanges}
+        // Sits between the AxesPanel (top-left) and InspectPanel
+        // (top-right). `left/right [4.5rem]` reserves enough room for
+        // both panels collapsed; `mx-auto` keeps the button itself
+        // centred in whatever band remains.
+        className="absolute top-3 left-[4.5rem] right-[4.5rem] mx-auto z-20 w-fit px-2 py-1 rounded text-[11px] bg-slate-900/80 backdrop-blur border border-slate-700 text-slate-200 hover:bg-slate-800 shadow disabled:opacity-40 disabled:hover:bg-slate-900/80 disabled:cursor-not-allowed"
+        title="Reset pose — clear overrides and resume live telemetry"
+      >
+        ↺ Home
+      </button>
       {paintMode ? (
         <PaintToolbar
           paintColor={paintColor}
@@ -323,7 +341,7 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col">
-      <StatusBar mode={effectiveTele?.mode} t={effectiveTele?.t} />
+      <StatusBar mode={effectiveTele?.mode} />
 
       <PanelVisibilityPicker
         panels={panels}
