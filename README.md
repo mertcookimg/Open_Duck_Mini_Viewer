@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 [![CI](https://github.com/mertcookimg/Open_Duck_Mini_Viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/mertcookimg/Open_Duck_Mini_Viewer/actions/workflows/ci.yml)
 
-**IEEE Spectrum Video Friday**, 
+**IEEE Spectrum Video Friday**,
 [Open Duck Mini Viewer has been featured on IEEE Spectrum Video Friday, “Your weekly selection of awesome robot videos”!!!](https://spectrum.ieee.org/video-friday-robotic-hand-dexterity)
 
 A **browser-only** GUI for the [Open Duck Mini V2](https://github.com/apirrone/Open_Duck_Mini)
