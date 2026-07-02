@@ -9,7 +9,7 @@ import { useColorOverrides } from "./hooks/useColorOverrides";
 import { MAX_SIDE_WIDTH, MIN_SIDE_WIDTH, useColumnWidths } from "./hooks/useColumnWidths";
 import { MAX_ROW_HEIGHT, MIN_ROW_HEIGHT, useRowHeights } from "./hooks/useRowHeights";
 import { useScrollEdges } from "./hooks/useScrollEdges";
-import { fetchJointConfigs } from "./robot";
+import { fetchJointConfigs, sendCommand } from "./robot";
 import type { JointConfig } from "./types";
 import { StatusBar } from "./components/StatusBar";
 import { JointTable } from "./components/JointTable";
@@ -192,6 +192,28 @@ export default function App() {
     setSelectedLink(null);
   }, []);
 
+  // Esc leaves paint mode — matches the "Esc cancels the current mode"
+  // convention and saves a trip to the toolbar's Done button.
+  useEffect(() => {
+    if (!paintMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") exitPaint();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [paintMode, exitPaint]);
+
+  // Gaze-follow ("Look") mode — the viewer reports where the cursor points
+  // in the robot's frame; the robot turns its head to follow. Releasing the
+  // mode hands the head back to the gait / motions.
+  const [lookMode, setLookMode] = useState(false);
+  const handleLook = useCallback((target: { yaw_deg: number; pitch_deg: number }) => {
+    void sendCommand({ kind: "look", target });
+  }, []);
+  useEffect(() => {
+    if (!lookMode) void sendCommand({ kind: "look", target: null });
+  }, [lookMode]);
+
   // When the viewer is shown, each side column uses the resizable fixed
   // width — but on small viewports we shrink them proportionally so the
   // viewer keeps at least VIEWER_MIN_PX. Saved preferences stay intact
@@ -214,7 +236,7 @@ export default function App() {
   }, [columnWidths, viewportWidth]);
 
   const VIEWER_MIN_VERT_PX = 200;
-  const LAYOUT_OVERHEAD_VERT_PX = 120; // status bar + picker + paddings + 2 resizers
+  const LAYOUT_OVERHEAD_VERT_PX = 80; // status bar + paddings + 2 resizers
   const ROW_FLOOR_PX = 80;
   const effectiveRows = useMemo(() => {
     const desired = rowHeights.top + rowHeights.bottom;
@@ -265,7 +287,9 @@ export default function App() {
           onClearOverrides={pose.clear}
         />
       )}
-      {panels.operator && <ControlPanel estopOn={estopOn} />}
+      {panels.operator && (
+        <ControlPanel estopOn={estopOn} activeMotion={effectiveTele?.motion ?? null} />
+      )}
       {panels.color && (
         <ColorPanel
           linkNames={linkNames}
@@ -301,6 +325,8 @@ export default function App() {
         paintMode={paintMode}
         selectedLink={selectedLink}
         onSelectLink={paintMode ? handlePickPart : setSelectedLink}
+        lookMode={lookMode}
+        onLook={handleLook}
       />
       <button
         type="button"
@@ -327,32 +353,46 @@ export default function App() {
           onClose={exitPaint}
         />
       ) : (
-        <button
-          type="button"
-          onClick={() => setPaintMode(true)}
-          className="absolute bottom-3 left-[9rem] right-[4.5rem] mx-auto z-20 w-fit px-3 py-1.5 rounded-lg text-xs bg-slate-900/80 backdrop-blur border border-slate-700 text-slate-200 hover:bg-slate-800 shadow"
-          title="Enter paint mode — click parts to recolour them"
-        >
-          🎨 Paint
-        </button>
+        <div className="absolute bottom-3 left-[9rem] right-[4.5rem] mx-auto z-20 w-fit flex gap-2">
+          <button
+            type="button"
+            onClick={() => setLookMode((v) => !v)}
+            className={`px-3 py-1.5 rounded-lg text-xs backdrop-blur border shadow ${
+              lookMode
+                ? "bg-duck-600 hover:bg-duck-500 border-duck-500 text-white"
+                : "bg-slate-900/80 hover:bg-slate-800 border-slate-700 text-slate-200"
+            }`}
+            title="Look mode — the duck's head follows your cursor"
+          >
+            👀 Look
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaintMode(true)}
+            className="px-3 py-1.5 rounded-lg text-xs bg-slate-900/80 backdrop-blur border border-slate-700 text-slate-200 hover:bg-slate-800 shadow"
+            title="Enter paint mode — click parts to recolour them"
+          >
+            🎨 Paint
+          </button>
+        </div>
       )}
     </>
   );
 
   return (
     <div className="h-screen flex flex-col">
-      <StatusBar mode={effectiveTele?.mode} />
-
-      <PanelVisibilityPicker
-        panels={panels}
-        onToggle={(key) => setPanels((prev) => ({ ...prev, [key]: !prev[key] }))}
-        onSetAll={(value) =>
-          setPanels(
-            (prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, value])) as typeof prev,
-          )
-        }
-        onApplyPreset={(preset) => setPanels(preset)}
-      />
+      <StatusBar mode={effectiveTele?.mode} battery={effectiveTele?.battery}>
+        <PanelVisibilityPicker
+          panels={panels}
+          onToggle={(key) => setPanels((prev) => ({ ...prev, [key]: !prev[key] }))}
+          onSetAll={(value) =>
+            setPanels(
+              (prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, value])) as typeof prev,
+            )
+          }
+          onApplyPreset={(preset) => setPanels(preset)}
+        />
+      </StatusBar>
 
       {isNarrow ? (
         <div className="flex-1 flex flex-col gap-2 p-3 overflow-hidden">

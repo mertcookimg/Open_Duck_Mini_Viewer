@@ -38,6 +38,8 @@ export interface Telemetry {
   battery?: Battery | null;
   system?: SystemStat | null;
   feet?: [boolean, boolean] | null;
+  /** Name of the motion currently driving the pose, if any. */
+  motion?: string | null;
 }
 
 export interface JointConfig {
@@ -50,5 +52,8 @@ export interface JointConfig {
 
 export type Command =
   | { kind: "velocity"; vx: number; vy: number; wz: number }
-  | { kind: "motion"; name: "stand" | "home" | "bow" | "wave" | "headbang" }
+  | { kind: "motion"; name: "stand" | "home" | "bow" | "wave" | "headbang" | "dance" }
+  // Gaze target in the robot's frame; null releases the gaze and lets the
+  // gait / motion drive the head again.
+  | { kind: "look"; target: { yaw_deg: number; pitch_deg: number } | null }
   | { kind: "estop"; engage: boolean };

@@ -24,6 +24,9 @@ interface Props {
   paintMode?: boolean;
   selectedLink?: string | null;
   onSelectLink?: (name: string | null) => void;
+  /** Gaze-follow: while true, pointer moves report a head look target. */
+  lookMode?: boolean;
+  onLook?: (target: { yaw_deg: number; pitch_deg: number }) => void;
 }
 
 interface ViewApi {
@@ -47,6 +50,8 @@ export function DuckViewer({
   paintMode = false,
   selectedLink = null,
   onSelectLink,
+  lookMode = false,
+  onLook,
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const robotRef = useRef<URDFRobot | null>(null);
@@ -78,6 +83,8 @@ export function DuckViewer({
   const selectedLinkRef = useRef<string | null>(selectedLink);
   const hoverLinkRef = useRef<string | null>(null);
   const onSelectLinkRef = useRef(onSelectLink);
+  const lookModeRef = useRef(lookMode);
+  const onLookRef = useRef(onLook);
   const outlinesByLinkRef = useRef<Map<string, THREE.LineSegments[]>>(new Map());
   const refreshOutlinesRef = useRef<() => void>(() => {});
   const rendererDomRef = useRef<HTMLCanvasElement | null>(null);
@@ -90,6 +97,12 @@ export function DuckViewer({
   useEffect(() => {
     onSelectLinkRef.current = onSelectLink;
   }, [onSelectLink]);
+  useEffect(() => {
+    lookModeRef.current = lookMode;
+  }, [lookMode]);
+  useEffect(() => {
+    onLookRef.current = onLook;
+  }, [onLook]);
 
   useEffect(() => {
     latestRef.current = { joints, imu };
@@ -468,8 +481,45 @@ export function DuckViewer({
       onSelectLinkRef.current?.(pickLinkAt(e.clientX, e.clientY));
     };
 
-    // Hover preview: re-pick on every pointermove (rAF-throttled) so the
-    // user can see exactly which part will be picked before committing.
+    // Gaze-follow: project the cursor onto the plane at head depth and
+    // express the direction from the head to that point as yaw/pitch in the
+    // robot's frame. The URDF is x-forward / z-up; after the zUp conversion
+    // the robot faces scene +x and positive head yaw swings +x toward -z.
+    // Working in world space keeps this correct from any camera angle.
+    const headWorld = new THREE.Vector3();
+    const lookVec = new THREE.Vector3();
+    const computeLookTarget = (
+      clientX: number,
+      clientY: number,
+    ): { yaw_deg: number; pitch_deg: number } | null => {
+      const robot = robotRef.current;
+      if (!robot) return null;
+      const headObj = headRigRef.current?.link ?? robot.links?.["head"] ?? robot;
+      const rect = renderer.domElement.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return null;
+      ndc.set(
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        -((clientY - rect.top) / rect.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(ndc, camera);
+      headObj.getWorldPosition(headWorld);
+      const dist = camera.position.distanceTo(headWorld);
+      lookVec
+        .copy(raycaster.ray.direction)
+        .multiplyScalar(dist)
+        .add(raycaster.ray.origin)
+        .sub(headWorld);
+      // Cursor hovering on the head itself → degenerate direction. Look at
+      // the camera instead: pointing at the duck means "look at me".
+      if (lookVec.length() < 0.08) lookVec.copy(camera.position).sub(headWorld);
+      const yaw = (Math.atan2(-lookVec.z, lookVec.x) * 180) / Math.PI;
+      const pitch = (Math.atan2(lookVec.y, Math.hypot(lookVec.x, lookVec.z)) * 180) / Math.PI;
+      return { yaw_deg: yaw, pitch_deg: pitch };
+    };
+
+    // Hover preview + gaze: re-evaluate on every pointermove (rAF-throttled)
+    // so paint mode shows exactly which part will be picked and look mode
+    // tracks the cursor without flooding the robot with commands.
     let pendingMove: { x: number; y: number } | null = null;
     let moveRaf = 0;
     const flushHover = () => {
@@ -477,15 +527,20 @@ export function DuckViewer({
       if (!pendingMove) return;
       const { x, y } = pendingMove;
       pendingMove = null;
-      if (!paintModeRef.current) return;
-      const link = pickLinkAt(x, y);
-      if (hoverLinkRef.current !== link) {
-        hoverLinkRef.current = link;
-        refreshOutlineVisibility();
+      if (paintModeRef.current) {
+        const link = pickLinkAt(x, y);
+        if (hoverLinkRef.current !== link) {
+          hoverLinkRef.current = link;
+          refreshOutlineVisibility();
+        }
+      }
+      if (lookModeRef.current) {
+        const target = computeLookTarget(x, y);
+        if (target) onLookRef.current?.(target);
       }
     };
     const onPointerMove = (e: PointerEvent) => {
-      if (!paintModeRef.current) return;
+      if (!paintModeRef.current && !lookModeRef.current) return;
       pendingMove = { x: e.clientX, y: e.clientY };
       if (!moveRaf) moveRaf = requestAnimationFrame(flushHover);
     };
