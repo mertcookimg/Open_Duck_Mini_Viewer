@@ -102,6 +102,50 @@ const _WAVE_B: Record<string, number> = {
   right_antenna: 60,
 };
 
+// Dance: knee-bounce groove with alternating hip sway, head swing and
+// antenna flair. Angles stay well inside the joint limits in joints.ts.
+const _DANCE_DOWN: Record<string, number> = {
+  ...HOME_POSE,
+  left_hip_pitch: -42,
+  right_hip_pitch: 42,
+  left_knee: 88,
+  right_knee: 88,
+  left_ankle: -52,
+  right_ankle: -52,
+  neck_pitch: -8,
+  head_pitch: -10,
+  left_antenna: 0,
+  right_antenna: 0,
+};
+const _DANCE_LEFT: Record<string, number> = {
+  ...HOME_POSE,
+  left_hip_roll: 12,
+  right_hip_roll: 5,
+  left_knee: 70,
+  right_knee: 86,
+  left_ankle: -40,
+  right_ankle: -50,
+  neck_pitch: 5,
+  head_yaw: 28,
+  head_roll: -14,
+  left_antenna: 55,
+  right_antenna: -55,
+};
+const _DANCE_RIGHT: Record<string, number> = {
+  ...HOME_POSE,
+  left_hip_roll: -5,
+  right_hip_roll: -12,
+  left_knee: 86,
+  right_knee: 70,
+  left_ankle: -50,
+  right_ankle: -40,
+  neck_pitch: 5,
+  head_yaw: -28,
+  head_roll: 14,
+  left_antenna: -55,
+  right_antenna: 55,
+};
+
 export const MOTIONS: Record<string, Motion> = {
   home: makeMotion({
     name: "home",
@@ -129,6 +173,18 @@ export const MOTIONS: Record<string, Motion> = {
       { t: 0, pose: _BANG_UP },
       { t: 0.2, pose: _BANG_DOWN },
       { t: 0.4, pose: _BANG_UP },
+    ],
+    loop: true,
+    blend_in_s: 0.3,
+  }),
+  dance: makeMotion({
+    name: "dance",
+    keyframes: [
+      { t: 0, pose: _DANCE_DOWN },
+      { t: 0.35, pose: _DANCE_LEFT },
+      { t: 0.7, pose: _DANCE_DOWN },
+      { t: 1.05, pose: _DANCE_RIGHT },
+      { t: 1.4, pose: _DANCE_DOWN },
     ],
     loop: true,
     blend_in_s: 0.3,

@@ -17,6 +17,13 @@ export class Robot {
   private motionStart = 0;
   private lastOutput: Record<string, number> = Object.fromEntries(JOINT_NAMES.map((n) => [n, 0]));
   private motionBlendFrom: Record<string, number> = {};
+  // Gaze ("look") state — the head tracks a yaw/pitch target with critically
+  // damped-ish smoothing. `lookWeight` fades the gaze in/out so enabling or
+  // releasing it never snaps the head.
+  private lookTarget: { yaw: number; pitch: number } | null = null;
+  private lookYaw = 0;
+  private lookPitch = 0;
+  private lookWeight = 0;
 
   applyCommand(cmd: Command): void {
     if (cmd.kind === "estop") {
@@ -25,12 +32,23 @@ export class Robot {
         this.mode = "estop";
         this.vx = this.vy = this.wz = 0;
         this.motionName = null;
+        this.lookTarget = null;
       } else {
         this.mode = "idle";
       }
       return;
     }
     if (this.estop) return;
+
+    if (cmd.kind === "look") {
+      this.lookTarget = cmd.target
+        ? {
+            yaw: Math.max(-70, Math.min(70, cmd.target.yaw_deg)),
+            pitch: Math.max(-25, Math.min(30, cmd.target.pitch_deg)),
+          }
+        : null;
+      return;
+    }
 
     if (cmd.kind === "velocity") {
       this.vx = cmd.vx;
@@ -71,6 +89,16 @@ export class Robot {
       motionPose = motion.sample(elapsed);
     }
 
+    // Advance the gaze smoothing (ticked at telemetry rate, 30 Hz).
+    const LOOK_SMOOTH = 0.18;
+    if (this.lookTarget) {
+      this.lookYaw += (this.lookTarget.yaw - this.lookYaw) * LOOK_SMOOTH;
+      this.lookPitch += (this.lookTarget.pitch - this.lookPitch) * LOOK_SMOOTH;
+      this.lookWeight += (1 - this.lookWeight) * LOOK_SMOOTH;
+    } else {
+      this.lookWeight -= this.lookWeight * LOOK_SMOOTH;
+    }
+
     const joints: JointState[] = [];
     for (const name of JOINT_NAMES) {
       const gait = this.gaitAngle(name, phase, walking, t);
@@ -81,6 +109,15 @@ export class Robot {
         angle = fromVal * (1 - motionBlend) + target * motionBlend;
       } else {
         angle = gait;
+      }
+      // Gaze layers on top of whatever the gait / motion decided for the
+      // head. Pitch is split across the neck and head joints the same way
+      // the bow motion does.
+      if (this.lookWeight > 0.001) {
+        const w = this.lookWeight;
+        if (name === "head_yaw") angle = angle * (1 - w) + this.lookYaw * w;
+        else if (name === "neck_pitch") angle = angle * (1 - w) + this.lookPitch * 0.4 * w;
+        else if (name === "head_pitch") angle = angle * (1 - w) + this.lookPitch * 0.6 * w;
       }
       this.lastOutput[name] = angle;
       joints.push({
@@ -133,6 +170,7 @@ export class Robot {
       battery,
       system,
       feet,
+      motion: this.motionName,
     };
   }
 

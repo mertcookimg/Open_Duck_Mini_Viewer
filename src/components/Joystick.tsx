@@ -7,10 +7,18 @@ interface Props {
   size?: number;
   onChange: (x: number, y: number) => void; // x,y in [-1,1]
   label?: string;
+  /**
+   * External stick position (e.g. keyboard-driven velocity). While the user
+   * is not dragging, the knob renders at this position so on-screen and
+   * keyboard control stay visually in sync. Ignored mid-drag.
+   */
+  value?: { x: number; y: number };
+  /** Grey out and ignore pointer input (e.g. while e-stopped). */
+  disabled?: boolean;
 }
 
 /** Touch / mouse joystick. (0,0) is centred; positive y is "up". */
-export function Joystick({ size = 160, onChange, label }: Props) {
+export function Joystick({ size = 160, onChange, label, value, disabled = false }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const dragging = useRef(false);
@@ -35,12 +43,23 @@ export function Joystick({ size = 160, onChange, label }: Props) {
     setPos({ x: cx, y: -cy }); // invert so up is positive
   };
 
+  // While idle, mirror the external value (clamped to the unit circle so a
+  // W+A diagonal doesn't push the knob outside the well).
+  let shown = pos;
+  if (!dragging.current && value) {
+    const mag = Math.hypot(value.x, value.y);
+    const s = mag > 1 ? 1 / mag : 1;
+    shown = { x: value.x * s, y: value.y * s };
+  }
+
   return (
-    <div className="flex flex-col items-center gap-1 select-none">
+    <div className={`flex flex-col items-center gap-1 select-none ${disabled ? "opacity-40" : ""}`}>
       {label && <div className="text-xs uppercase text-slate-400">{label}</div>}
       <div
         ref={ref}
-        className="relative rounded-full bg-slate-800 border border-slate-700 touch-none"
+        className={`relative rounded-full bg-slate-800 border border-slate-700 touch-none ${
+          disabled ? "pointer-events-none" : ""
+        }`}
         style={{ width: size, height: size }}
         onPointerDown={(e) => {
           dragging.current = true;
@@ -66,14 +85,14 @@ export function Joystick({ size = 160, onChange, label }: Props) {
           style={{
             width: knobR * 2,
             height: knobR * 2,
-            left: radius + pos.x * (radius - knobR) - knobR,
-            top: radius - pos.y * (radius - knobR) - knobR,
+            left: radius + shown.x * (radius - knobR) - knobR,
+            top: radius - shown.y * (radius - knobR) - knobR,
             transition: dragging.current ? "none" : "all 0.15s ease-out",
           }}
         />
       </div>
       <div className="text-[10px] tabular-nums text-slate-500">
-        {pos.x.toFixed(2)}, {pos.y.toFixed(2)}
+        {shown.x.toFixed(2)}, {shown.y.toFixed(2)}
       </div>
     </div>
   );
