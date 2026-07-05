@@ -112,7 +112,7 @@ export class Robot {
       this.odomX += (this.vx * cos - this.vy * sin) * WALK_SPEED_MPS * dt;
       this.odomY += (this.vx * sin + this.vy * cos) * WALK_SPEED_MPS * dt;
       this.odomYawDeg += this.wz * TURN_RATE_DPS * dt;
-      this.odomYawDeg = ((this.odomYawDeg + 180) % 360 + 360) % 360 - 180;
+      this.odomYawDeg = ((((this.odomYawDeg + 180) % 360) + 360) % 360) - 180;
       this.odomX = Math.max(-ARENA_HALF_M, Math.min(ARENA_HALF_M, this.odomX));
       this.odomY = Math.max(-ARENA_HALF_M, Math.min(ARENA_HALF_M, this.odomY));
     }

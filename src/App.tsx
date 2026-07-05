@@ -317,7 +317,8 @@ export default function App() {
   // "Center" only lights up once the duck has actually wandered off origin.
   const odom = effectiveTele?.odom;
   const hasWandered =
-    !!odom && (Math.abs(odom.x_m) > 0.01 || Math.abs(odom.y_m) > 0.01 || Math.abs(odom.yaw_deg) > 1);
+    !!odom &&
+    (Math.abs(odom.x_m) > 0.01 || Math.abs(odom.y_m) > 0.01 || Math.abs(odom.yaw_deg) > 1);
   const viewerInner = (
     <>
       <DuckViewer
