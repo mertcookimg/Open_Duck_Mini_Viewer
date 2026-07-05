@@ -1,9 +1,24 @@
 // Copyright 2026 Masato Kobayashi
 // SPDX-License-Identifier: Apache-2.0
 
-import type { Battery, Command, Imu, JointState, RobotMode, SystemStat, Telemetry } from "../types";
+import type {
+  Battery,
+  Command,
+  Imu,
+  JointState,
+  Odom,
+  RobotMode,
+  SystemStat,
+  Telemetry,
+} from "../types";
 import { HOME_POSE, JOINT_NAMES } from "./joints";
 import { MOTIONS } from "./motions";
+
+// Odometry tuning. Speeds are for a full-deflection stick (|v| = 1); the
+// arena clamp keeps the duck on the visible grid in the viewer.
+const WALK_SPEED_MPS = 0.25;
+const TURN_RATE_DPS = 90;
+export const ARENA_HALF_M = 1.8;
 
 export class Robot {
   private t0 = performance.now() / 1000;
@@ -24,8 +39,18 @@ export class Robot {
   private lookYaw = 0;
   private lookPitch = 0;
   private lookWeight = 0;
+  // Odometry — velocity commands integrate into an actual position/heading
+  // so the duck walks around the arena instead of marching in place.
+  private odomX = 0;
+  private odomY = 0;
+  private odomYawDeg = 0;
+  private lastTickS: number | null = null;
 
   applyCommand(cmd: Command): void {
+    if (cmd.kind === "reset_odom") {
+      this.odomX = this.odomY = this.odomYawDeg = 0;
+      return;
+    }
     if (cmd.kind === "estop") {
       this.estop = cmd.engage;
       if (cmd.engage) {
@@ -75,6 +100,22 @@ export class Robot {
 
     const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
     const walking = this.mode === "walking";
+
+    // Integrate odometry. dt is clamped so a backgrounded tab doesn't
+    // teleport the duck across the arena on the first tick after resume.
+    const dt = this.lastTickS === null ? 0 : Math.min(Math.max(now - this.lastTickS, 0), 0.1);
+    this.lastTickS = now;
+    if (walking && dt > 0) {
+      const yawRad = (this.odomYawDeg * Math.PI) / 180;
+      const cos = Math.cos(yawRad);
+      const sin = Math.sin(yawRad);
+      this.odomX += (this.vx * cos - this.vy * sin) * WALK_SPEED_MPS * dt;
+      this.odomY += (this.vx * sin + this.vy * cos) * WALK_SPEED_MPS * dt;
+      this.odomYawDeg += this.wz * TURN_RATE_DPS * dt;
+      this.odomYawDeg = ((((this.odomYawDeg + 180) % 360) + 360) % 360) - 180;
+      this.odomX = Math.max(-ARENA_HALF_M, Math.min(ARENA_HALF_M, this.odomX));
+      this.odomY = Math.max(-ARENA_HALF_M, Math.min(ARENA_HALF_M, this.odomY));
+    }
     const effort = Math.max(speed, Math.abs(this.wz));
     const gaitFreq = 1.0 + 1.5 * effort;
     const phase = 2 * Math.PI * gaitFreq * t;
@@ -131,7 +172,7 @@ export class Robot {
     const imu: Imu = {
       roll_deg: 2.0 * Math.sin(phase) * (walking ? 1 : 0) + (Math.random() - 0.5) * 0.4,
       pitch_deg: 1.5 * Math.cos(phase) * (walking ? 1 : 0) + (Math.random() - 0.5) * 0.4,
-      yaw_deg: ((t * 30.0 * this.wz) % 360) - 180,
+      yaw_deg: this.odomYawDeg + (Math.random() - 0.5) * 0.3,
       accel_g: [
         (Math.random() - 0.5) * 0.1,
         (Math.random() - 0.5) * 0.1,
@@ -162,6 +203,8 @@ export class Robot {
       ? [Math.sin(phase) <= 0, Math.sin(phase) > 0]
       : [true, true];
 
+    const odom: Odom = { x_m: this.odomX, y_m: this.odomY, yaw_deg: this.odomYawDeg };
+
     return {
       t,
       mode: this.mode,
@@ -171,6 +214,7 @@ export class Robot {
       system,
       feet,
       motion: this.motionName,
+      odom,
     };
   }
 

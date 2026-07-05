@@ -5,12 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import URDFLoader, { URDFRobot } from "urdf-loader";
-import type { JointState, Imu } from "../../types";
+import type { JointState, Imu, Odom } from "../../types";
 import { D2R, EXPLODE_SCALE, PACKAGE_BASE, RENDER_ORDER_HELPER, URDF_URL } from "./config";
 import type { AxesState, InspectMode, MeshInfo } from "./types";
 import { applyMaterialMode } from "./applyMaterialMode";
 import { applyColorOverrides } from "./applyColorOverrides";
 import { captureNewMeshes } from "./meshCapture";
+import { FootprintTrail } from "./footprints";
 import { AxesPanel } from "./AxesPanel";
 import { InspectPanel } from "./InspectPanel";
 import { ViewControls } from "./ViewControls";
@@ -18,6 +19,10 @@ import { ViewControls } from "./ViewControls";
 interface Props {
   joints: JointState[];
   imu: Imu | undefined;
+  /** Walked-to body pose — moves the whole robot across the grid. */
+  odom?: Odom | null;
+  /** Foot-contact flags; rising edges stamp footprints while driving. */
+  feet?: [boolean, boolean] | null;
   colorOverrides?: Record<string, string>;
   onLinkNames?: (names: string[]) => void;
   onLinkDefaults?: (defaults: Record<string, string>) => void;
@@ -44,6 +49,8 @@ interface HeadRig {
 export function DuckViewer({
   joints,
   imu,
+  odom,
+  feet,
   colorOverrides,
   onLinkNames,
   onLinkDefaults,
@@ -105,8 +112,8 @@ export function DuckViewer({
   }, [onLook]);
 
   useEffect(() => {
-    latestRef.current = { joints, imu };
-  }, [joints, imu]);
+    latestRef.current = { joints, imu, odom, feet };
+  }, [joints, imu, odom, feet]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -140,15 +147,22 @@ export function DuckViewer({
     const fill = new THREE.DirectionalLight(0xfde68a, 0.25);
     fill.position.set(-3, 2, -2);
     scene.add(fill);
-    scene.add(new THREE.GridHelper(2, 20, 0x334155, 0x1e293b));
+    // 4 m grid — the odometry arena (±1.8 m clamp in Robot.ts) fits inside.
+    scene.add(new THREE.GridHelper(4, 40, 0x334155, 0x1e293b));
 
-    // tiltGroup gets IMU; zUp converts URDF Z-up into our Y-up scene.
+    // odomGroup carries the walked-to position/heading; tiltGroup gets IMU;
+    // zUp converts URDF Z-up into our Y-up scene.
+    const odomGroup = new THREE.Group();
     const tiltGroup = new THREE.Group();
     const zUp = new THREE.Group();
     zUp.rotation.x = -Math.PI / 2;
     tiltGroup.add(zUp);
-    scene.add(tiltGroup);
+    odomGroup.add(tiltGroup);
+    scene.add(odomGroup);
     tiltGroupRef.current = tiltGroup;
+
+    // Footprint decals live in world space so they stay put as the duck walks.
+    const footTrail = new FootprintTrail(scene);
 
     // World axes anchor outside tiltGroup so they stay aligned with the grid
     // even when the IMU pitches/rolls the robot frame.
@@ -585,11 +599,18 @@ export function DuckViewer({
     const floorBox = new THREE.Box3();
     const explodeQ = new THREE.Quaternion();
     const explodeDir = new THREE.Vector3();
+    // Follow-cam + footprint state. followPrev tracks the robot's scene
+    // position so the camera pans by exactly the frame-to-frame delta —
+    // orbiting/zooming still belongs to the user.
+    const followPrev = new THREE.Vector3();
+    const followDelta = new THREE.Vector3();
+    let prevFeet: [boolean, boolean] = [true, true];
+    const FOOT_LATERAL_M = 0.045;
 
     let raf = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
-      const { joints: js, imu: im } = latestRef.current;
+      const { joints: js, imu: im, odom: od, feet: ft } = latestRef.current;
       const robot = robotRef.current;
 
       // Resolve current explode factor (animated cycle overrides the slider).
@@ -731,6 +752,41 @@ export function DuckViewer({
           tiltGroupRef.current.rotation.z = im.roll_deg * D2R * 0.3;
         }
       }
+
+      // ---- odometry: place the robot, pan the camera, stamp footprints ----
+      const nowS = performance.now() / 1000;
+      if (od) {
+        // URDF world (x fwd, y left, z up) → scene (x, −y horizontal, y up);
+        // yaw about URDF z becomes rotation about scene y.
+        const sceneX = od.x_m;
+        const sceneZ = -od.y_m;
+        const yawRad = od.yaw_deg * D2R;
+        odomGroup.position.set(sceneX, 0, sceneZ);
+        odomGroup.rotation.y = yawRad;
+
+        followDelta.set(sceneX - followPrev.x, 0, sceneZ - followPrev.z);
+        const moved = followDelta.lengthSq() > 1e-10;
+        if (moved) {
+          camera.position.add(followDelta);
+          controls.target.add(followDelta);
+          controls.update();
+          followPrev.set(sceneX, 0, sceneZ);
+        }
+
+        // Stamp a print when a foot lands while the body is displacing.
+        if (ft && moved) {
+          for (let i = 0; i < 2; i++) {
+            if (!ft[i] || prevFeet[i]) continue;
+            const side = i === 0 ? 1 : -1; // [left, right] → ± lateral offset
+            const lx = -Math.sin(yawRad) * side * FOOT_LATERAL_M;
+            const lz = -Math.cos(yawRad) * side * FOOT_LATERAL_M;
+            footTrail.drop(sceneX + lx, sceneZ + lz, yawRad, nowS);
+          }
+        }
+        if (ft) prevFeet = ft;
+      }
+      footTrail.update(nowS);
+
       renderer.render(scene, camera);
     };
     tick();
@@ -744,6 +800,7 @@ export function DuckViewer({
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerleave", onPointerLeave);
       ro.disconnect();
+      footTrail.dispose();
       controls.dispose();
       renderer.dispose();
       if (renderer.domElement.parentElement === mount) {
