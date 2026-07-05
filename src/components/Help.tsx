@@ -7,8 +7,10 @@ export function Help() {
     <div className="bg-slate-900 rounded-lg p-3 text-xs text-slate-400 space-y-1">
       <div className="text-slate-300 uppercase text-[10px]">Robot</div>
       <div>
-        <kbd className={kbd}>W A S D</kbd> move · <kbd className={kbd}>Q E</kbd> turn
+        <kbd className={kbd}>W A S D</kbd> move · <kbd className={kbd}>Q E</kbd> turn — the duck
+        really walks around the grid, leaving footprints
       </div>
+      <div>🎯 Center brings it back to the middle</div>
       <div className="text-slate-300 uppercase text-[10px] pt-2">3D view</div>
       <div>
         <kbd className={kbd}>← ↑ → ↓</kbd> rotate (Shift = faster)

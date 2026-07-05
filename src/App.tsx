@@ -314,11 +314,17 @@ export default function App() {
   // Disabled (rather than hidden) when there's nothing to reset, so the
   // button location is consistent and discoverable.
   const hasPoseChanges = pose.enabled || Object.keys(pose.overrides).length > 0;
+  // "Center" only lights up once the duck has actually wandered off origin.
+  const odom = effectiveTele?.odom;
+  const hasWandered =
+    !!odom && (Math.abs(odom.x_m) > 0.01 || Math.abs(odom.y_m) > 0.01 || Math.abs(odom.yaw_deg) > 1);
   const viewerInner = (
     <>
       <DuckViewer
         joints={effectiveTele?.joints ?? []}
         imu={effectiveTele?.imu}
+        odom={effectiveTele?.odom}
+        feet={effectiveTele?.feet}
         colorOverrides={colorOverrides}
         onLinkNames={handleLinkNames}
         onLinkDefaults={handleLinkDefaults}
@@ -373,6 +379,15 @@ export default function App() {
             title="Enter paint mode — click parts to recolour them"
           >
             🎨 Paint
+          </button>
+          <button
+            type="button"
+            onClick={() => void sendCommand({ kind: "reset_odom" })}
+            disabled={!hasWandered}
+            className="px-3 py-1.5 rounded-lg text-xs bg-slate-900/80 backdrop-blur border border-slate-700 text-slate-200 hover:bg-slate-800 shadow disabled:opacity-40 disabled:hover:bg-slate-900/80 disabled:cursor-not-allowed"
+            title="Center — bring the duck back to the middle of the grid"
+          >
+            🎯 Center
           </button>
         </div>
       )}

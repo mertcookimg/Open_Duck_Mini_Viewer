@@ -30,6 +30,13 @@ export interface SystemStat {
   temp_c: number;
 }
 
+/** Integrated body pose in the world frame (x forward, y left, yaw CCW). */
+export interface Odom {
+  x_m: number;
+  y_m: number;
+  yaw_deg: number;
+}
+
 export interface Telemetry {
   t: number;
   mode: RobotMode;
@@ -40,6 +47,8 @@ export interface Telemetry {
   feet?: [boolean, boolean] | null;
   /** Name of the motion currently driving the pose, if any. */
   motion?: string | null;
+  /** Where the robot has walked to. Additive — old viewers ignore it. */
+  odom?: Odom | null;
 }
 
 export interface JointConfig {
@@ -56,4 +65,7 @@ export type Command =
   // Gaze target in the robot's frame; null releases the gaze and lets the
   // gait / motion drive the head again.
   | { kind: "look"; target: { yaw_deg: number; pitch_deg: number } | null }
+  // Re-zero the odometry origin (a software op on a real robot too, so it
+  // stays legal even while e-stopped).
+  | { kind: "reset_odom" }
   | { kind: "estop"; engage: boolean };
