@@ -204,6 +204,15 @@ with:
 
 ---
 
+## Analytics and privacy
+
+The official live demo uses Google Analytics 4 to understand aggregate usage,
+such as page views and general usage patterns, and to help improve the project.
+Analytics is enabled only on the official GitHub Pages site; local development
+and forked deployments do not send data to this project's GA4 property.
+
+---
+
 ## License
 
 [Apache-2.0](LICENSE).
