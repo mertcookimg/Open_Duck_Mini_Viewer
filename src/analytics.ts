@@ -6,7 +6,8 @@ const PRODUCTION_HOSTNAME = "mertcookimg.github.io";
 const PRODUCTION_PATHNAME = "/Open_Duck_Mini_Viewer/";
 
 type AnalyticsWindow = Window & {
-  dataLayer?: unknown[][];
+  dataLayer?: unknown[];
+  gtag?: (...args: unknown[]) => void;
 };
 
 /**
@@ -25,9 +26,10 @@ export function initializeGoogleAnalytics(): void {
 
   const analyticsWindow = window as AnalyticsWindow;
   const dataLayer = (analyticsWindow.dataLayer ??= []);
-  const gtag = (...args: unknown[]) => {
-    dataLayer.push(args);
+  const gtag: (...args: unknown[]) => void = function () {
+    dataLayer.push(arguments);
   };
+  analyticsWindow.gtag = gtag;
 
   gtag("js", new Date());
   gtag("config", GA_MEASUREMENT_ID);
