@@ -237,7 +237,7 @@ export class Robot {
     // axes (including pure rotation) lift the feet.
     const stepAmp = (Math.abs(this.vx) + Math.abs(this.vy) + Math.abs(this.wz)) * 25;
 
-    if (name.endsWith("hip_pitch")) return home + side * vxAmp * sinP;
+    if (name.endsWith("hip_pitch")) return home + vxAmp * sinP;
     if (name.endsWith("knee")) {
       // Knees only bend further from home — clamp the oscillation to ≥0 so
       // the leg never hyperextends past the standing posture.
@@ -250,7 +250,7 @@ export class Robot {
       // during stride.
       return home + side * 0.2 * stepAmp + vyAmp * sinP;
     }
-    if (name.endsWith("hip_yaw")) return home + side * wzAmp * sinP;
+    if (name.endsWith("hip_yaw")) return home + wzAmp * sinP;
     if (name.includes("antenna")) return home + side * 15 * Math.sin(2 * t);
     return home;
   }
