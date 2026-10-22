@@ -44,7 +44,9 @@ GitHub Pages deployment.
 
 ## Quick start
 
-You only need [Node.js](https://nodejs.org/) (LTS). One command:
+You only need [Node.js](https://nodejs.org/) 24.22.1 or newer (use the latest 24.x LTS).
+Use a modern browser (Chrome 111+, Safari 16.4+, or Firefox 128+) for Tailwind CSS 4.
+Start with one command:
 
 ### Windows (PowerShell)
 

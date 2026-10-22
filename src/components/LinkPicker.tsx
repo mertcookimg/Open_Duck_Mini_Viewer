@@ -138,7 +138,7 @@ export function LinkPicker({
 export function Swatch({ color }: { color?: string }) {
   return (
     <span
-      className="inline-block w-3.5 h-3.5 rounded-sm border border-slate-700 flex-shrink-0"
+      className="inline-block w-3.5 h-3.5 rounded-xs border border-slate-700 shrink-0"
       style={{ background: color ?? "transparent" }}
     />
   );

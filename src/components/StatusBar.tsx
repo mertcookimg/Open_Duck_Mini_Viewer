@@ -78,7 +78,7 @@ function BatteryPill({ battery }: { battery: Battery }) {
       className="flex items-center gap-1.5 shrink-0"
       title={`Battery ${pct.toFixed(0)}% · ${battery.voltage_v.toFixed(2)} V`}
     >
-      <span className="relative w-6 h-3 rounded-sm border border-slate-600 overflow-hidden">
+      <span className="relative w-6 h-3 rounded-xs border border-slate-600 overflow-hidden">
         <span className={`absolute inset-y-0 left-0 ${colour}`} style={{ width: `${pct}%` }} />
       </span>
       <span className={`text-xs tabular-nums ${text}`}>{pct.toFixed(0)}%</span>

@@ -3,9 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-duck-50: #fffbe6;
+  --color-duck-400: #fbbf24;
+  --color-duck-500: #f59e0b;
+  --color-duck-600: #d97706;
+}
+
+/* Preserve the button cursor used before the Tailwind v4 migration. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 html,
 body,
