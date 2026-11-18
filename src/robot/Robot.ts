@@ -45,6 +45,10 @@ export class Robot {
   private odomY = 0;
   private odomYawDeg = 0;
   private lastTickS: number | null = null;
+  // Gait phase is integrated (phase += 2π·f·dt) rather than computed as
+  // 2π·f·t: with f tracking stick deflection, the closed form jumps by
+  // 2π·Δf·t on every speed change and the legs visibly snap.
+  private gaitPhase = 0;
 
   applyCommand(cmd: Command): void {
     if (cmd.kind === "reset_odom") {
@@ -118,7 +122,8 @@ export class Robot {
     }
     const effort = Math.max(speed, Math.abs(this.wz));
     const gaitFreq = 1.0 + 1.5 * effort;
-    const phase = 2 * Math.PI * gaitFreq * t;
+    this.gaitPhase = (this.gaitPhase + 2 * Math.PI * gaitFreq * dt) % (2 * Math.PI);
+    const phase = this.gaitPhase;
 
     const motion = this.motionName && !walking ? MOTIONS[this.motionName] : undefined;
     let motionPose: Record<string, number> = {};

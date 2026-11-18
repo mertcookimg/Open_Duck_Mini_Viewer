@@ -1,95 +1,26 @@
 // Copyright 2026 Masato Kobayashi
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { sendCommand } from "../robot";
+import type { Velocity } from "../hooks/useVelocityControl";
 import { Joystick } from "./Joystick";
 
 const MOTIONS = ["stand", "home", "bow", "wave", "headbang", "dance"] as const;
 
-// True when the key event originated in a text-entry element — WASD typed
-// into the paint hex field (or any future input) must not drive the robot.
-function isTypingTarget(e: KeyboardEvent): boolean {
-  const t = e.target as HTMLElement | null;
-  if (!t) return false;
-  return (
-    t.tagName === "INPUT" ||
-    t.tagName === "TEXTAREA" ||
-    t.tagName === "SELECT" ||
-    t.isContentEditable
-  );
-}
-
 export function ControlPanel({
   estopOn,
   activeMotion,
+  vel,
+  onMove,
+  onTurn,
 }: {
   estopOn: boolean;
   activeMotion?: string | null;
+  /** Current commanded velocity (keyboard or joystick) — owned by useVelocityControl. */
+  vel: Velocity;
+  onMove: (x: number, y: number) => void;
+  onTurn: (x: number, y: number) => void;
 }) {
-  const [vel, setVel] = useState({ vx: 0, vy: 0, wz: 0 });
-  const lastSent = useRef({ vx: 0, vy: 0, wz: 0 });
-  const sendTimer = useRef<number | null>(null);
-  const keys = useRef(new Set<string>());
-
-  useEffect(() => {
-    if (sendTimer.current) return;
-    sendTimer.current = window.setInterval(() => {
-      const cur = lastSent.current;
-      if (cur.vx === vel.vx && cur.vy === vel.vy && cur.wz === vel.wz) return;
-      lastSent.current = vel;
-      void sendCommand({ kind: "velocity", ...vel });
-    }, 50);
-    return () => {
-      if (sendTimer.current) clearInterval(sendTimer.current);
-      sendTimer.current = null;
-    };
-  }, [vel]);
-
-  useEffect(() => {
-    const recompute = () => {
-      const k = keys.current;
-      const vx = (k.has("w") ? 1 : 0) + (k.has("s") ? -1 : 0);
-      const vy = (k.has("a") ? -1 : 0) + (k.has("d") ? 1 : 0);
-      const wz = (k.has("q") ? -1 : 0) + (k.has("e") ? 1 : 0);
-      setVel({ vx, vy, wz });
-    };
-    const down = (e: KeyboardEvent) => {
-      if (e.repeat || isTypingTarget(e)) return;
-      keys.current.add(e.key.toLowerCase());
-      recompute();
-    };
-    // keyup is never filtered: if focus moved into an input mid-press, the
-    // release must still be seen or the robot walks forever.
-    const up = (e: KeyboardEvent) => {
-      keys.current.delete(e.key.toLowerCase());
-      recompute();
-    };
-    // Alt-tab away swallows the keyup — treat losing focus as all-keys-up.
-    const releaseAll = () => {
-      if (keys.current.size === 0) return;
-      keys.current.clear();
-      recompute();
-    };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    window.addEventListener("blur", releaseAll);
-    document.addEventListener("visibilitychange", releaseAll);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-      window.removeEventListener("blur", releaseAll);
-      document.removeEventListener("visibilitychange", releaseAll);
-    };
-  }, []);
-
-  const onMove = useCallback((x: number, y: number) => {
-    setVel((v) => ({ ...v, vx: y, vy: x }));
-  }, []);
-  const onTurn = useCallback((x: number, _y: number) => {
-    setVel((v) => ({ ...v, wz: x }));
-  }, []);
-
   const motionBtn = "py-2 rounded text-sm capitalize disabled:opacity-40 ";
   return (
     <div className="bg-slate-900 rounded-lg p-3 space-y-3">

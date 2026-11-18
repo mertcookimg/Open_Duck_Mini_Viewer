@@ -118,6 +118,10 @@ export function DuckViewer({
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
+    // URDF/STL loads can't be aborted. If this effect is torn down first
+    // (StrictMode double-mount, viewer panel toggled quickly) their
+    // callbacks must not write into the refs the next mount owns.
+    let disposed = false;
 
     // ---- scene / camera / renderer ----
     const scene = new THREE.Scene();
@@ -283,13 +287,16 @@ export function DuckViewer({
     const manager = new THREE.LoadingManager();
     // onLoad set BEFORE loader.load so we never miss the completion event
     // (set-after-the-fact is a known footgun with LoadingManager).
-    manager.onLoad = fitToRobot;
+    manager.onLoad = () => {
+      if (!disposed) fitToRobot();
+    };
 
     const loader = new URDFLoader(manager);
     loader.packages = PACKAGE_BASE;
     loader.load(
       URDF_URL,
       (robot) => {
+        if (disposed) return;
         zUp.add(robot);
         robotRef.current = robot;
 
@@ -352,6 +359,7 @@ export function DuckViewer({
       },
       undefined,
       (err) => {
+        if (disposed) return;
         console.error("URDF load failed", err);
         setStatus("missing");
       },
@@ -792,6 +800,7 @@ export function DuckViewer({
     tick();
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       if (moveRaf) cancelAnimationFrame(moveRaf);
       window.removeEventListener("keydown", onKey);
@@ -802,11 +811,25 @@ export function DuckViewer({
       ro.disconnect();
       footTrail.dispose();
       controls.dispose();
+      // Free GPU buffers for everything in the scene: STL meshes and their
+      // cloned materials, paint-mode edge outlines, helpers, grid.
+      scene.traverse((obj) => {
+        const { geometry, material } = obj as Partial<THREE.Mesh>;
+        geometry?.dispose();
+        if (Array.isArray(material)) for (const m of material) m.dispose();
+        else material?.dispose();
+      });
       renderer.dispose();
+      // Release the WebGL context now rather than at GC time — browsers cap
+      // live contexts (~16) and drop the oldest once the cap is hit.
+      renderer.forceContextLoss();
       if (renderer.domElement.parentElement === mount) {
         mount.removeChild(renderer.domElement);
       }
       apiRef.current = null;
+      robotRef.current = null;
+      tiltGroupRef.current = null;
+      knownLinkNamesRef.current = [];
       headRigRef.current = null;
       worldAxesRef.current = null;
       bodyAxesRef.current = null;

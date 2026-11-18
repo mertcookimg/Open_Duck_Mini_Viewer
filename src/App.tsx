@@ -9,6 +9,7 @@ import { useColorOverrides } from "./hooks/useColorOverrides";
 import { MAX_SIDE_WIDTH, MIN_SIDE_WIDTH, useColumnWidths } from "./hooks/useColumnWidths";
 import { MAX_ROW_HEIGHT, MIN_ROW_HEIGHT, useRowHeights } from "./hooks/useRowHeights";
 import { useScrollEdges } from "./hooks/useScrollEdges";
+import { useVelocityControl } from "./hooks/useVelocityControl";
 import { fetchJointConfigs, sendCommand } from "./robot";
 import type { JointConfig } from "./types";
 import { StatusBar } from "./components/StatusBar";
@@ -50,6 +51,9 @@ export default function App() {
   const { tele, jointHistory } = useTelemetry();
   const [panels, setPanels] = usePanelVisibility();
   const pose = usePoseOverrides(tele);
+  // App-level so the drive command survives the operator panel being
+  // hidden or remounted (e.g. crossing the narrow-layout breakpoint).
+  const velocity = useVelocityControl();
 
   const [jointConfigs, setJointConfigs] = useState<JointConfig[]>([]);
   useEffect(() => {
@@ -288,7 +292,13 @@ export default function App() {
         />
       )}
       {panels.operator && (
-        <ControlPanel estopOn={estopOn} activeMotion={effectiveTele?.motion ?? null} />
+        <ControlPanel
+          estopOn={estopOn}
+          activeMotion={effectiveTele?.motion ?? null}
+          vel={velocity.vel}
+          onMove={velocity.onMove}
+          onTurn={velocity.onTurn}
+        />
       )}
       {panels.color && (
         <ColorPanel

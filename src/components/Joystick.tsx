@@ -26,9 +26,31 @@ export function Joystick({ size = 160, onChange, label, value, disabled = false 
   const radius = size / 2;
   const knobR = size * 0.18;
 
+  const onChangeRef = useRef(onChange);
   useEffect(() => {
-    onChange(pos.x, pos.y);
-  }, [pos, onChange]);
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  // Report only user-driven changes. Emitting on mount would clobber a
+  // keyboard-held velocity whenever the panel remounts.
+  const emit = (next: { x: number; y: number }) => {
+    setPos(next);
+    onChangeRef.current(next.x, next.y);
+  };
+  const release = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    emit({ x: 0, y: 0 });
+  };
+
+  // Unmounting mid-drag (panel hidden, layout breakpoint) never delivers a
+  // pointerup — centre the stick so the robot doesn't keep walking.
+  useEffect(
+    () => () => {
+      if (dragging.current) onChangeRef.current(0, 0);
+    },
+    [],
+  );
 
   const updateFromEvent = (clientX: number, clientY: number) => {
     const el = ref.current;
@@ -40,7 +62,7 @@ export function Joystick({ size = 160, onChange, label, value, disabled = false 
     const a = Math.atan2(dy, dx);
     const cx = (Math.cos(a) * r) / radius;
     const cy = (Math.sin(a) * r) / radius;
-    setPos({ x: cx, y: -cy }); // invert so up is positive
+    emit({ x: cx, y: -cy }); // invert so up is positive
   };
 
   // While idle, mirror the external value (clamped to the unit circle so a
@@ -69,14 +91,8 @@ export function Joystick({ size = 160, onChange, label, value, disabled = false 
         onPointerMove={(e) => {
           if (dragging.current) updateFromEvent(e.clientX, e.clientY);
         }}
-        onPointerUp={() => {
-          dragging.current = false;
-          setPos({ x: 0, y: 0 });
-        }}
-        onPointerCancel={() => {
-          dragging.current = false;
-          setPos({ x: 0, y: 0 });
-        }}
+        onPointerUp={release}
+        onPointerCancel={release}
       >
         <div className="absolute inset-1/2 w-px h-full -translate-x-1/2 -translate-y-1/2 bg-slate-700" />
         <div className="absolute inset-1/2 h-px w-full -translate-x-1/2 -translate-y-1/2 bg-slate-700" />
