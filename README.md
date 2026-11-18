@@ -134,7 +134,7 @@ src/
     ├── StatusBar · PanelVisibilityPicker · Resizer
     └── Help · Loading
 scripts/                          setup / start-all / start-frontend (PS + Bash)
-.github/workflows/deploy.yml      GitHub Pages auto-deploy
+.github/workflows/ci.yml          checks + GitHub Pages deploy (only when checks pass)
 ```
 
 ---
@@ -192,8 +192,8 @@ nothing else regressed.
 - In the PR description, explain **what** changed and **why**, and
   attach a screenshot or short clip for any UI change.
 - Reference the related issue (`Closes #123`) if there is one.
-- The GitHub Pages deploy workflow runs on merge to `main`; PR builds
-  do not auto-deploy.
+- The CI workflow deploys to GitHub Pages on merge to `main`, and only
+  after audit / format / type-check / build pass. PR builds do not deploy.
 
 ### Reporting bugs / requesting features
 

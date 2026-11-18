@@ -1,6 +1,11 @@
 # Copyright 2026 Masato Kobayashi
 # SPDX-License-Identifier: Apache-2.0
 
+# One workflow for checks and deployment: the GitHub Pages deploy job
+# `needs` the build job, so the site is only published from a commit that
+# passed audit, format, type-check and build. The deployed artifact is the
+# exact `dist/` this run verified.
+
 name: CI
 
 on:
@@ -8,13 +13,19 @@ on:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Supersede stale PR runs, but never cancel a main run mid-deploy.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    # Job name is referenced by branch-protection status checks — keep it.
     name: typecheck & build
     runs-on: ubuntu-latest
     steps:
@@ -29,8 +40,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Audit dependencies
-        run: npm audit
+      # Ships to the browser — block on any advisory.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+
+      # Build tooling runs only in CI / on dev machines against our own
+      # config, so block only on critical advisories (malware, RCE). Lower
+      # severities are still listed in this step's log.
+      - name: Audit all dependencies (critical only)
+        run: npm audit --audit-level=critical
 
       - name: Format check
         run: npm run format:check
@@ -40,3 +58,30 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Deploy-only permissions; PR runs never get Pages write access.
+    permissions:
+      pages: write
+      id-token: write
+    # One deployment at a time; queued runs wait instead of cancelling.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
